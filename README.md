@@ -4,7 +4,7 @@ Live US market boards — the S&P 500 and a curated ETF universe — built the s
 way as the Indian boards (`nifty-heatmap-web`, `nifty-ema-board`,
 `nifty-pcr-tracker`, `fno-rollover`) and sharing their RRG mathematics.
 
-**Live:** https://abhijeetbishayee-drb.github.io/us-market-boards/rrg.html
+**Live:** https://sectorchakra.github.io/us-market-boards/rrg.html
 
 ## What is here
 
