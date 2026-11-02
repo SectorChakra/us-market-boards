@@ -106,6 +106,18 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
+    # Futures and the extended-hours print. Both are small (4 + 4 requests) and
+    # neither may fail the board: a missing futures row is a cosmetic gap, a
+    # missing heatmap is not.
+    try:
+        futures = B.fetch_futures()
+    except Exception as e:
+        print(f"  futures block failed ({type(e).__name__}: {e})"); futures = {}
+    try:
+        extended = B.fetch_extended()
+    except Exception as e:
+        print(f"  extended block failed ({type(e).__name__}: {e})"); extended = {}
+
     # Decide the corporate-action question ONCE, before anything reads a price.
     flagged = B.flag_corporate_moves(stocks)
 
@@ -148,6 +160,8 @@ def main():
         "market": "US",
         "indices": indices,
         "indexLabels": B.INDEX_LABELS,
+        "futures": futures,
+        "extended": extended,
         "sectors": [market] + sectors,
         "etfGroups": etf_groups,
         "gainers": gainers,
@@ -169,6 +183,16 @@ def main():
     except Exception as e:
         print(f"  spot.json NOT written ({type(e).__name__}: {e}) — the EMA "
               "board will fall back to its last daily close")
+
+    if futures:
+        print("  futures: " + ", ".join(
+            f"{k} {v['pct']:+.2f}%" for k, v in futures.items()))
+    if extended:
+        print("  extended: " + ", ".join(
+            f"{k} {v['phase']} {v['pct']:+.2f}% via {v['proxy']}"
+            for k, v in extended.items()))
+    else:
+        print("  extended: none (cash session open, or no extended prints yet)")
 
     print(f"wrote board_data.json — {loaded}/{len(universe)} loaded, "
           f"{len(sectors)} sectors, {len(etf_groups)} ETF groups, "

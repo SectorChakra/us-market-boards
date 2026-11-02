@@ -28,10 +28,11 @@ into the sector. Where it finds nothing it leaves the number alone and says so.
 """
 
 import sys
+import requests
 from datetime import date, datetime, timedelta, timezone
 
-from . import (BENCHMARK, ETF_GROUPS, ETF_NAME, SECTOR_ETF, SECTOR_OF,
-               SPX_SECTORS, display_name, short_name)
+from . import (BENCHMARK, ETF_GROUPS, ETF_NAME, EXCHANGE_TZ, HEADERS,
+               SECTOR_ETF, SECTOR_OF, SPX_SECTORS, display_name, short_name)
 from . import corp_events as CE
 
 # A one-day move big enough to be worth CHECKING against the event feed. It is
@@ -54,6 +55,117 @@ INDEX_LABELS = {
     "dow": "DOW JONES",
     "russell2000": "RUSSELL 2000",
 }
+
+# The front-month future for each index. This is the honest "what is the market
+# doing right now" reading outside the cash session: futures trade ~23 hours,
+# the cash index does not trade at all once the bell goes.
+FUTURES = {
+    "sp500": "ES=F",        # E-mini S&P 500
+    "nasdaq100": "NQ=F",    # E-mini Nasdaq 100
+    "dow": "YM=F",          # E-mini Dow ($5)
+    "russell2000": "RTY=F", # E-mini Russell 2000
+}
+
+# ETF proxies for the EXTENDED-HOURS print. A cash index has no pre- or
+# post-market value - there is nothing to compute it from, because its
+# constituents are not trading in a way the index publisher consolidates. The
+# liquid ETF that tracks it does print in extended hours, so that is what is
+# shown, labelled with the proxy so it is never mistaken for the index itself.
+EXT_PROXY = {
+    "sp500": "SPY",
+    "nasdaq100": "QQQ",
+    "dow": "DIA",
+    "russell2000": "IWM",
+}
+
+
+def _chart(ticker, interval, rng, prepost=False, timeout=25):
+    sym = ticker.replace("^", "%5E")
+    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+           f"?interval={interval}&range={rng}"
+           f"&includePrePost={'true' if prepost else 'false'}")
+    r = requests.get(url, headers=HEADERS, timeout=timeout)
+    r.raise_for_status()
+    return r.json()["chart"]["result"][0]
+
+
+def fetch_futures(log=print):
+    """{key: {ticker, name, price, pct, pts}} for the four index futures.
+
+    Percentage is against the future's OWN previous settle, which is what
+    "futures are up X" means everywhere it is quoted - not against the cash
+    index, whose close happens at a different moment and would produce a
+    number that looks authoritative and means nothing.
+    """
+    out = {}
+    for key, tkr in FUTURES.items():
+        try:
+            d = _chart(tkr, "5m", "2d")
+            m = d["meta"]
+            px = m.get("regularMarketPrice")
+            prev = m.get("chartPreviousClose") or m.get("previousClose")
+            if px is None or not prev:
+                continue
+            out[key] = {"ticker": tkr, "name": m.get("shortName") or tkr,
+                        "price": px, "pts": px - prev,
+                        "pct": (px / prev - 1) * 100, "prevClose": prev}
+        except Exception as e:
+            log(f"  futures {tkr}: {type(e).__name__}: {e}")
+    return out
+
+
+def fetch_extended(log=print):
+    """{key: {proxy, phase, price, pct, pts, asOf}} - the pre/post-market print.
+
+    Emitted ONLY when the newest bar actually falls outside the regular
+    session. During the cash session there is no extended print to show, and
+    carrying yesterday's forward would be stale data wearing a live label;
+    the futures row covers that window instead.
+
+    Phases come from Yahoo's own `tradingPeriods`, never from a hardcoded
+    clock: that structure spans daylight-saving changes correctly (it returned
+    EDT windows for one day and EST for the next across the 1 Nov 2026
+    switch), which a fixed offset would not.
+    """
+    out = {}
+    for key, tkr in EXT_PROXY.items():
+        try:
+            d = _chart(tkr, "5m", "2d", prepost=True)
+            m = d["meta"]
+            closes = d["indicators"]["quote"][0]["close"]
+            bars = [(t, c) for t, c in zip(d["timestamp"], closes) if c is not None]
+            if not bars:
+                continue
+            tp = m.get("tradingPeriods") or {}
+
+            def windows(name):
+                raw = tp.get(name) or []
+                flat = []
+                for item in raw:
+                    flat.extend(item if isinstance(item, list) else [item])
+                return [w for w in flat if isinstance(w, dict)]
+
+            def phase_of(t):
+                for name in ("regular", "pre", "post"):
+                    for w in windows(name):
+                        if w["start"] <= t < w["end"]:
+                            return name
+                return None
+
+            last_t, last_px = bars[-1]
+            ph = phase_of(last_t)
+            if ph not in ("pre", "post"):
+                continue                      # cash session is open; nothing to show
+            ref = next((c for t, c in reversed(bars) if phase_of(t) == "regular"), None)
+            if not ref:
+                continue
+            out[key] = {"proxy": tkr, "phase": ph, "price": last_px,
+                        "pts": last_px - ref, "pct": (last_px / ref - 1) * 100,
+                        "refClose": ref,
+                        "asOf": datetime.fromtimestamp(last_t, EXCHANGE_TZ).isoformat()}
+        except Exception as e:
+            log(f"  extended {tkr}: {type(e).__name__}: {e}")
+    return out
 
 
 def build_rows(tickers, stocks, flagged=None):

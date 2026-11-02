@@ -316,8 +316,9 @@ function render(data){
   latest = data;
   const idx = data.indices || {};
   const labels = data.indexLabels || {};
+  const fut = data.futures || {}, ext = data.extended || {};
   document.getElementById('indicesRow').innerHTML =
-    Object.keys(labels).map(k => indexCardHtml(labels[k], idx[k])).join('');
+    Object.keys(labels).map(k => indexCardHtml(labels[k], idx[k], fut[k], ext[k])).join('');
 
   const b = data.breadth;
   document.getElementById('breadthTag').textContent =

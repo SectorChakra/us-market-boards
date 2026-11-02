@@ -116,38 +116,76 @@ function tileHtml(r){
   `;
 }
 
-function indexCardHtml(displayName, idx){
+/* One index card: name, level, change, day range, then the two readouts that
+   say what is happening when the cash session is NOT the whole story.
+
+   FUT is the front-month future, quoted against its OWN previous settle -
+   which is what "futures are up X" means wherever it is quoted. Measuring it
+   against the cash close instead would compare two prices struck at different
+   moments and produce a confident, meaningless number.
+
+   PRE/POST is an ETF proxy, and is labelled with that proxy on the row. A cash
+   index has no extended-hours value at all - there is nothing to compute one
+   from - so the honest thing is to show the fund that does trade and name it,
+   never to imply the index itself printed. It appears only when the newest bar
+   really is outside the session; during the cash session the futures row is
+   the live overnight reference and this one is absent rather than stale. */
+function indexCardHtml(displayName, idx, fut, ext){
   if(!idx || idx.price === undefined || idx.price === null){
     return `<div class="index-card"><div class="index-card-head"><span class="idx-name">${displayName}</span></div><span style="color:var(--text-dim);font-size:12px;">No data</span></div>`;
   }
+  const num = (v,d=2) => v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
   const up = idx.pct >= 0;
   const headHtml = `
     <div class="index-card-head">
       <span class="idx-name">${displayName}</span>
       <span class="idx-figures">
-        <span class="idx-price">${idx.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-        <span class="idx-delta ${up ? 'up':'down'}">${up?'+':''}${idx.pct.toFixed(2)}% (${up?'+':''}${idx.pts.toFixed(1)} pts)</span>
+        <span class="idx-price">${num(idx.price)}</span>
+        <span class="idx-delta ${up ? 'up':'down'}">${up?'+':''}${idx.pct.toFixed(2)}%</span>
       </span>
-    </div>
-  `;
+    </div>`;
 
   let rangeHtml = '';
-  if(idx.dayLow !== null && idx.dayLow !== undefined && idx.dayHigh !== null && idx.dayHigh !== undefined && idx.dayHigh > idx.dayLow){
+  if(idx.dayLow != null && idx.dayHigh != null && idx.dayHigh > idx.dayLow){
     let pos = (idx.price - idx.dayLow) / (idx.dayHigh - idx.dayLow);
     pos = Math.min(0.94, Math.max(0.06, pos));
-    const leftExpr = `calc(44px + (100% - 88px) * ${pos.toFixed(4)})`;
+    const leftExpr = `calc(34px + (100% - 68px) * ${pos.toFixed(4)})`;
     rangeHtml = `
       <div class="range-visual">
         <div class="track-line"></div>
         <div class="end-pill low">${idx.dayLow.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
         <div class="end-pill high">${idx.dayHigh.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
         <div class="cur-stem" style="left:${leftExpr}"></div>
-        <div class="cur-pill" style="left:${leftExpr}">${idx.price.toLocaleString('en-US',{maximumFractionDigits:2})}</div>
         <div class="cur-dot" style="left:${leftExpr}"></div>
-      </div>
-    `;
+      </div>`;
   }
-  return `<div class="index-card">${headHtml}${rangeHtml}</div>`;
+
+  const sub = (label, tag, price, pct, title) => {
+    const u = pct >= 0;
+    return `<div class="idx-sub" title="${title}">
+      <span class="s-lbl">${label}</span>
+      <span class="s-tag">${tag}</span>
+      <span class="s-px">${num(price)}</span>
+      <span class="s-pc ${u?'up':'down'}">${u?'+':''}${pct.toFixed(2)}%</span>
+    </div>`;
+  };
+
+  let extras = '';
+  if(fut && fut.price != null){
+    extras += sub('FUT', fut.ticker, fut.price, fut.pct,
+      `${fut.name} — against its own previous settle ${num(fut.prevClose)}`);
+  }
+  if(ext && ext.price != null){
+    const when = ext.asOf ? new Date(ext.asOf).toLocaleTimeString('en-US',
+      {timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'}) : '';
+    extras += sub(ext.phase === 'pre' ? 'PRE' : 'POST', ext.proxy, ext.price, ext.pct,
+      `${ext.proxy} extended-hours print at ${when} ET, against its regular close `
+      + `${num(ext.refClose)}. The index itself does not trade outside the session; `
+      + `this is the ETF that tracks it.`);
+  }
+  if(extras) extras = `<div class="idx-subs">${extras}</div>`;
+
+  return `<div class="index-card">${headHtml}${rangeHtml}${extras}</div>`;
 }
 
 function moversList(items, field){
