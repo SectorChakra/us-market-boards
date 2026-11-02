@@ -1,0 +1,24 @@
+# A shared asset changed without its ?v= changing is invisible: the page and
+# its JSON refresh around a browser-cached copy of the OLD code, so the board
+# looks current and behaves old. That happened on 2026-11-02 - the futures
+# rows shipped and rendered on the server, but returning visitors kept the
+# October app.js and saw none of them. `push` is used deliberately: `schedule`
+# on this account fires unreliably (it has delivered zero events against 60
+# daily slots), while a push event is immediate and certain.
+name: Asset stamp
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "assets/**"
+      - "*.html"
+      - "scripts/stamp_assets.py"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/stamp_assets.py --check
