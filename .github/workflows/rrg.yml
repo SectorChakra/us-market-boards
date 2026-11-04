@@ -69,14 +69,22 @@ jobs:
         run: python3 scripts/daily_levels.py --if-stale
         continue-on-error: true
 
+      # Share counts move on buybacks and issuance, so a daily refresh is
+      # already generous. continue-on-error because a missing caps.json costs
+      # the tiles one line of context, and must never cost the whole board
+      # its daily rebuild.
+      - name: Refresh market caps and fund net assets
+        run: python3 scripts/fetch_caps.py
+        continue-on-error: true
+
       - name: Commit if the data changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- rrg_data.json data/levels.json data/pnf.json; then
+          if git diff --quiet -- rrg_data.json data/levels.json data/pnf.json data/caps.json; then
             echo "nothing changed - nothing to commit"
             exit 0
           fi
-          git add rrg_data.json data/levels.json data/pnf.json
+          git add rrg_data.json data/levels.json data/pnf.json data/caps.json
           git commit -m "US RRG: rebuild for $(date -u +%Y-%m-%d)"
           git push

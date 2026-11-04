@@ -194,7 +194,17 @@
   }
   .tile:hover{ transform:translateY(-2px); box-shadow:0 4px 14px color-mix(in srgb, currentColor 22%, transparent); }
   .tile:focus-visible{ outline:2px solid var(--info); outline-offset:2px; }
-  .tile .name{ font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:600; font-size:12.5px; letter-spacing:0.01em; }
+  /* Ticker left, size right, on one line. `baseline` rather than `center` so
+     the two different font sizes sit on the same line as each other, and
+     min-width:0 so a long ticker ellipsizes instead of shoving the figure
+     out of the tile. */
+  .tile .name-row{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+  .tile .name{ font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:600; font-size:12.5px; letter-spacing:0.01em;
+               min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Secondary to the price and the % change: this is context, not the
+     reading. Tabular figures keep the decimal point aligned down a column. */
+  .tile .cap{ font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-variant-numeric:tabular-nums;
+              opacity:0.68; white-space:nowrap; flex:none; }
   /* Company / fund name under the ticker: US tickers (STX, URI...) mean little
      on their own, and the title tooltip never shows on a phone. One line,
      ellipsized, so long names cannot change the tile height. */

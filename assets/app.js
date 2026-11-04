@@ -58,6 +58,54 @@ function fmtCompact(p){
     ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
     : { maximumFractionDigits: 0 });
 }
+/* Size, in the user's requested $ xx.x Mn/Bn/Tr form.
+
+   One decimal throughout, so a column of tiles stays the same width whether
+   it reads 15.9 Bn or 5.1 Tr. */
+function fmtCap(v){
+  if(v === null || v === undefined || !isFinite(v)) return '';
+  const a = Math.abs(v);
+  if(a >= 1e12) return '$ ' + (v / 1e12).toFixed(1) + ' Tr';
+  if(a >= 1e9)  return '$ ' + (v / 1e9).toFixed(1) + ' Bn';
+  if(a >= 1e6)  return '$ ' + (v / 1e6).toFixed(1) + ' Mn';
+  return '$ ' + Math.round(v).toLocaleString('en-US');
+}
+
+/* Market cap for a stock, net assets for a fund - two different quantities,
+   kept apart on purpose.
+
+   A stock's cap is rebuilt here as shares x the LIVE price rather than read
+   from the file, so it moves with the % change printed beside it. The share
+   count comes from caps.json and changes on buybacks, not on the minute.
+
+   A fund has no market cap. Yahoo returns null for every ETF, so the figure
+   shown is net assets (AUM) exactly as published - flat, never scaled by the
+   day's move, because an ETF's share count changes with creations and
+   redemptions and scaling it would invent a number. The tooltip says which
+   of the two a tile is showing. */
+let CAPS = { shares: {}, netAssets: {} };
+function sizeOf(r){
+  const sh = CAPS.shares[r.ticker];
+  if(sh && r.price) return { value: sh * r.price, label: 'Market cap' };
+  const na = CAPS.netAssets[r.ticker];
+  if(na) return { value: na, label: 'Net assets' };
+  return null;
+}
+
+/* caps.json is rebuilt daily, so it is fetched once rather than polled. A
+   failure must not cost us the board: the tiles simply render without the
+   figure, and the next daily load picks it up. */
+async function loadCaps(){
+  try{
+    const resp = await fetch('data/caps.json?t=' + Date.now(), { cache: 'no-store' });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const d = await resp.json();
+    CAPS = { shares: d.shares || {}, netAssets: d.netAssets || {} };
+  }catch(e){
+    console.warn('caps.json unavailable - tiles will render without size', e);
+  }
+}
+
 function quoteUrl(ticker){
   return `https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}`;
 }
@@ -102,9 +150,13 @@ function caTitle(r){
    could drift. */
 function tileHtml(r){
   const pctText = (r.ca && !r.ca.adjusted) ? 'NA' : fmtPct(r.pct);
+  const size = sizeOf(r);
   return `
-    <a class="tile ${bucket(r.pct)}${r.ca ? ' ex-ca' : ''}" href="${quoteUrl(r.ticker)}" target="_blank" rel="noopener noreferrer" title="${r.full ? r.full + ' · ' : ''}Day range: ${fmtPrice(r.dayLow)} – ${fmtPrice(r.dayHigh)}${caTitle(r)} · View on Yahoo Finance">
-      <div class="name">${r.name}${r.ca ? '<span class="adj-star" title="corporate action today — see the note below the board">*</span>' : ''}</div>
+    <a class="tile ${bucket(r.pct)}${r.ca ? ' ex-ca' : ''}" href="${quoteUrl(r.ticker)}" target="_blank" rel="noopener noreferrer" title="${r.full ? r.full + ' · ' : ''}${size ? size.label + ' ' + fmtCap(size.value) + ' · ' : ''}Day range: ${fmtPrice(r.dayLow)} – ${fmtPrice(r.dayHigh)}${caTitle(r)} · View on Yahoo Finance">
+      <div class="name-row">
+        <div class="name">${r.name}${r.ca ? '<span class="adj-star" title="corporate action today — see the note below the board">*</span>' : ''}</div>
+        ${size ? `<div class="cap" title="${size.label}: ${fmtCap(size.value)}">${fmtCap(size.value)}</div>` : ''}
+      </div>
       ${r.full && r.full !== r.name ? `<div class="full">${r.full}</div>` : ''}
       <div class="figures">
         <div class="price">${fmtPrice(r.price)}</div>
