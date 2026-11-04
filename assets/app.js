@@ -213,10 +213,21 @@ function indexCardHtml(key, displayName, idx, fut, ext, size, exact){
   const up = idx.pct >= 0;
   const n = (MEMBERS[key] || []).length;
   const countText = size ? `${exact ? '' : '~'}${size.toLocaleString('en-US')}` : '';
+  /* The day's move in index POINTS, opposite the name. The % beside the level
+     answers "how big a move is this"; the points answer "how far has it
+     actually travelled", which is the number quoted when people talk about
+     the Dow. Both are the same move, so they always carry the same sign and
+     the same colour. */
+  const ptsHtml = (idx.pts === null || idx.pts === undefined) ? ''
+    : `<span class="idx-pts ${up ? 'up':'down'}" title="Change today in index points">`
+      + `${up?'+':'\u2212'}${Math.abs(idx.pts).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
   const headHtml = `
     <div class="index-card-head">
-      <span class="idx-name">${displayName}</span>
-      ${countText ? `<span class="idx-count">${countText}</span>` : ''}
+      <div class="idx-title">
+        <span class="idx-name">${displayName}</span>
+        ${countText ? `<span class="idx-count">${countText}</span>` : ''}
+        ${ptsHtml}
+      </div>
       <span class="idx-figures">
         <span class="idx-price">${num(idx.price)}</span>
         <span class="idx-delta ${up ? 'up':'down'}">${up?'+':''}${idx.pct.toFixed(2)}%</span>

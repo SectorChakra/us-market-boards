@@ -152,7 +152,20 @@
     display:flex; flex-direction:column; align-items:flex-start;
     gap:2px; margin-bottom:8px;
   }
-  .index-card-head .idx-name{ flex:1 1 auto; }
+  /* Name and member count left, the day's point move hard right. Baseline
+     alignment so three different font sizes still sit on one line. */
+  .index-card-head .idx-title{
+    display:flex; align-items:baseline; justify-content:flex-start;
+    gap:6px; width:100%;
+  }
+  .index-card-head .idx-name{ flex:0 1 auto; min-width:0; }
+  .idx-pts{
+    margin-left:auto; font-family:"IBM Plex Mono",monospace;
+    font-size:11px; font-weight:600; font-variant-numeric:tabular-nums;
+    white-space:nowrap; flex:none;
+  }
+  .idx-pts.up{ color:var(--b-gain-2-tx); }
+  .idx-pts.down{ color:var(--b-loss-2-tx); }
   .index-card-head .idx-figures{
     display:flex; align-items:baseline; gap:8px; flex-wrap:nowrap;
   }
