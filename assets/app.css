@@ -102,10 +102,46 @@
      the extended-hours print), and at the old 2-up width they pushed the whole
      sector strip below the fold. Narrower cards fit the added rows AND get the
      board back on one screen. */
+  /* Eight cards, two rows of four. Four across is the useful unit: it keeps
+     the narrow indices on one line and the broad ones on the next, which is
+     the order they are built in. */
   .indices-row{
     display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;
     margin-bottom:16px;
   }
+  /* A drillable card is a <button>, so its browser chrome has to be undone
+     before it can look like the others. */
+  button.index-card{
+    font:inherit; color:inherit; text-align:left; width:100%;
+    appearance:none; cursor:pointer;
+  }
+  .index-card.drillable:hover{ border-color:var(--info); }
+  .index-card.drillable:focus-visible{ outline:2px solid var(--info); outline-offset:2px; }
+  .idx-count{
+    font-family:"IBM Plex Mono",monospace; font-size:9.5px; opacity:0.55;
+    margin-left:6px; white-space:nowrap;
+  }
+  .idx-drill{
+    display:block; margin-top:5px; font-size:9.5px; letter-spacing:0.04em;
+    text-transform:uppercase; color:var(--info); opacity:0.9;
+  }
+  /* Says plainly that there is nothing to open, so a card that does nothing
+     does not read as one that is broken. */
+  .idx-drill.none{ color:var(--text-dim); opacity:0.6; }
+
+  .index-view-bar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-bottom:12px; padding:8px 10px;
+    border:1px solid var(--border); border-left:2px solid var(--info);
+    border-radius:6px; background:var(--panel);
+  }
+  .index-view-bar button{
+    font:inherit; font-size:11px; cursor:pointer; padding:4px 10px;
+    border:1px solid var(--border); border-radius:4px;
+    background:transparent; color:inherit;
+  }
+  .index-view-bar button:hover{ border-color:var(--info); }
+  .ivb-what{ font-size:11.5px; opacity:0.85; }
   @media (max-width:1100px){ .indices-row{ grid-template-columns:1fr 1fr; } }
   @media (max-width:560px){ .indices-row{ grid-template-columns:1fr; } }
   .index-card{

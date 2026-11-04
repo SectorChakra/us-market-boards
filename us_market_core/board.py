@@ -48,13 +48,40 @@ INDICES = {
     "^NDX": "nasdaq100",
     "^DJI": "dow",
     "^RUT": "russell2000",
+    "^OEX": "sp100",
+    "^RUI": "russell1000",
+    "^SP600": "sp600",
+    "^IXIC": "nasdaqcomp",
 }
 INDEX_LABELS = {
-    "sp500": "S&P 500",
-    "nasdaq100": "NASDAQ 100",
     "dow": "DOW JONES",
+    "nasdaq100": "NASDAQ 100",
+    "sp100": "S&P 100",
+    "sp500": "S&P 500",
+    "sp600": "S&P SMALLCAP 600",
+    "russell1000": "RUSSELL 1000",
     "russell2000": "RUSSELL 2000",
+    "nasdaqcomp": "NASDAQ COMPOSITE",
 }
+
+# The cards are laid out narrowest index first, widest last, so reading left
+# to right is reading from the thirty largest American companies out to the
+# whole Nasdaq listing. Any ordering is arbitrary; this one at least says
+# something true about the indices, which an alphabetical or by-change order
+# would not - and it does not reshuffle itself as prices move, so a card stays
+# where you last reached for it.
+INDEX_ORDER = ["dow", "nasdaq100", "sp100", "sp500",
+               "sp600", "russell1000", "russell2000", "nasdaqcomp"]
+
+# Roughly how many names each index holds. Shown on the card, and the reason
+# the order above is what it is. Approximate for the Russells and the
+# Composite, which drift with listings and the annual reconstitution - they
+# are marked with a leading "~" on the card for exactly that reason.
+INDEX_SIZE = {
+    "dow": 30, "nasdaq100": 101, "sp100": 101, "sp500": 503,
+    "sp600": 600, "russell1000": 1000, "russell2000": 2000, "nasdaqcomp": 3300,
+}
+INDEX_SIZE_EXACT = {"dow", "nasdaq100", "sp100", "sp500"}
 
 # The front-month future for each index. This is the honest "what is the market
 # doing right now" reading outside the cash session: futures trade ~23 hours,

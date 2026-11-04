@@ -73,6 +73,14 @@ jobs:
       # already generous. continue-on-error because a missing caps.json costs
       # the tiles one line of context, and must never cost the whole board
       # its daily rebuild.
+      # Index membership changes a few times a year. The script aborts rather
+      # than publishing a wrong list, so continue-on-error keeps a Wikipedia
+      # table edit from failing the whole daily rebuild - the board then keeps
+      # yesterday's membership, which is right ~360 days out of 365.
+      - name: Refresh index membership
+        run: python3 scripts/refresh_index_members.py
+        continue-on-error: true
+
       - name: Refresh market caps and fund net assets
         run: python3 scripts/fetch_caps.py
         continue-on-error: true
@@ -81,10 +89,10 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- rrg_data.json data/levels.json data/pnf.json data/caps.json; then
+          if git diff --quiet -- rrg_data.json data/levels.json data/pnf.json data/caps.json data/index_members.json; then
             echo "nothing changed - nothing to commit"
             exit 0
           fi
-          git add rrg_data.json data/levels.json data/pnf.json data/caps.json
+          git add rrg_data.json data/levels.json data/pnf.json data/caps.json data/index_members.json
           git commit -m "US RRG: rebuild for $(date -u +%Y-%m-%d)"
           git push

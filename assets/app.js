@@ -106,6 +106,29 @@ async function loadCaps(){
   }
 }
 
+/* Which indices the board can actually list the members of, and who they are.
+
+   Four of the eight can be drilled into: the S&P 500 because the board prices
+   all 503, and the S&P 100, Dow 30 and Nasdaq-100 because they are small and
+   sit almost entirely inside that set (the fifteen Nasdaq-100 names that do
+   not - ASML, ARM, PDD and the rest - are fetched alongside it).
+
+   The other four cannot, and say so rather than showing part of themselves.
+   The Russell 1000, Russell 2000, S&P SmallCap 600 and Nasdaq Composite run
+   to roughly 1,000 / 2,000 / 600 / 3,300 names that this board does not
+   price. A list of whichever handful happened to overlap would look like the
+   index and would not be it. */
+let MEMBERS = {};
+async function loadMembers(){
+  try{
+    const resp = await fetch('data/index_members.json?t=' + Date.now(), { cache: 'no-store' });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    MEMBERS = (await resp.json()).members || {};
+  }catch(e){
+    console.warn('index_members.json unavailable - no drill-down', e);
+  }
+}
+
 function quoteUrl(ticker){
   return `https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}`;
 }
@@ -182,15 +205,18 @@ function tileHtml(r){
    never to imply the index itself printed. It appears only when the newest bar
    really is outside the session; during the cash session the futures row is
    the live overnight reference and this one is absent rather than stale. */
-function indexCardHtml(displayName, idx, fut, ext){
+function indexCardHtml(key, displayName, idx, fut, ext, size, exact){
   if(!idx || idx.price === undefined || idx.price === null){
     return `<div class="index-card"><div class="index-card-head"><span class="idx-name">${displayName}</span></div><span style="color:var(--text-dim);font-size:12px;">No data</span></div>`;
   }
   const num = (v,d=2) => v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
   const up = idx.pct >= 0;
+  const n = (MEMBERS[key] || []).length;
+  const countText = size ? `${exact ? '' : '~'}${size.toLocaleString('en-US')}` : '';
   const headHtml = `
     <div class="index-card-head">
       <span class="idx-name">${displayName}</span>
+      ${countText ? `<span class="idx-count">${countText}</span>` : ''}
       <span class="idx-figures">
         <span class="idx-price">${num(idx.price)}</span>
         <span class="idx-delta ${up ? 'up':'down'}">${up?'+':''}${idx.pct.toFixed(2)}%</span>
@@ -237,7 +263,16 @@ function indexCardHtml(displayName, idx, fut, ext){
   }
   if(extras) extras = `<div class="idx-subs">${extras}</div>`;
 
-  return `<div class="index-card">${headHtml}${rangeHtml}${extras}</div>`;
+  /* Drillable cards are real buttons, so they are reachable by keyboard and
+     announce themselves as doing something. The rest are plain divs: a card
+     that looks clickable and is not is worse than one that never offered. */
+  if(n){
+    return `<button type="button" class="index-card drillable" data-index="${key}"
+              title="Show the ${n} members of ${displayName} on the board">${headHtml}${rangeHtml}${extras}
+              <span class="idx-drill">${n} members &rsaquo;</span></button>`;
+  }
+  return `<div class="index-card" title="${displayName} has ${countText || 'more'} constituents, which this board does not price — the level is live, but there is no member list to open.">${headHtml}${rangeHtml}${extras}
+            <span class="idx-drill none">members not tracked</span></div>`;
 }
 
 function moversList(items, field){

@@ -6,7 +6,7 @@
 <title>US Market Heatmap</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/app.css?v=629f11a23e">
+<link rel="stylesheet" href="assets/app.css?v=b508f4b9b6">
 </head>
 <body>
 <div class="wrap">
@@ -49,6 +49,7 @@
     <div class="status" id="breadthTag" style="font-family:'IBM Plex Mono',monospace;"></div>
   </div>
 
+  <div class="index-view-bar" id="indexViewBar" hidden></div>
   <div class="sector-strip" id="sectorStrip"></div>
 
   <div id="sectorBlocks"></div>
@@ -104,7 +105,7 @@
   <div class="disclaimer">Market data: Yahoo Finance (unofficial; may be delayed or inaccurate). For information only &mdash; not investment advice, and not a recommendation to buy, sell or hold any security. Verify with your broker before acting. <a href="../nifty-heatmap-web/privacy.html" style="color:inherit">Privacy policy</a></div>
 </div>
 
-<script src="assets/app.js?v=629f11a23e"></script>
+<script src="assets/app.js?v=b508f4b9b6"></script>
 <script>
 renderLegend('legend');
 initBackToTop();
@@ -133,7 +134,11 @@ function blocks(){
   if(!latest) return [];
   const secs = (latest.sectors || []).slice();
   const etfs = (latest.etfGroups || []).slice();
-  const pinned = secs.filter(s => s.pinned);
+  /* The whole-index block is no longer pinned to the top of the strip: the
+     S&P 500 card above says the same thing, and said it twice the strip's
+     first line was a duplicate of the headline. The BLOCK still exists - it
+     is what the S&P 500 card opens - it just no longer takes a summary row
+     of its own. */
   const rest   = secs.filter(s => !s.pinned);
   const order = arr => {
     if(sortMode === 'name') arr.sort((a,b) => a.sector.localeCompare(b.sector));
@@ -142,8 +147,8 @@ function blocks(){
     return arr;
   };
   if(showMode === 'etfs') return order(etfs);
-  if(showMode === 'stocks') return pinned.concat(order(rest));
-  return pinned.concat(order(rest), order(etfs));
+  if(showMode === 'stocks') return order(rest);
+  return order(rest).concat(order(etfs));
 }
 
 /* The real traded day range of ONE instrument: low, where it sits now, high,
@@ -303,22 +308,98 @@ document.getElementById('sectorStrip').addEventListener('click', e => {
   paint();
 });
 
+/* Which index, if any, the board is currently narrowed to. Null is the normal
+   sector view. */
+let INDEX_VIEW = null;
+
+/* Every priced row the board knows, keyed by ticker: the sector constituents
+   plus the handful of index members that belong to no sector here. Built on
+   each paint so it cannot go stale against the snapshot. */
+function rowIndex(){
+  const map = new Map();
+  (latest.sectors || []).forEach(s => (s.rows || []).forEach(r => map.set(r.ticker, r)));
+  (latest.indexExtras || []).forEach(r => map.set(r.ticker, r));
+  return map;
+}
+
+/* One index's members as a block. The average is recomputed from the members
+   actually shown rather than reused from a sector: this is a different set of
+   names, so a sector's figure would not describe it. Equal-weighted, like
+   every other average on this board, and said so on the block. */
+function indexBlock(key){
+  const want = MEMBERS[key] || [];
+  const map = rowIndex();
+  const rows = want.map(t => map.get(t)).filter(Boolean);
+  const pcts = rows.map(r => r.pct).filter(v => v !== null && v !== undefined);
+  const avg = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null;
+  return {
+    sector: (latest.indexLabels || {})[key] || key,
+    count: rows.length,
+    missing: want.length - rows.length,
+    avgPct: avg, avgPctEx: null, exOutliers: null, exBasis: null,
+    constituentRange: null, index: null, pinned: false,
+    up:   rows.filter(r => r.pct > 0).length,
+    down: rows.filter(r => r.pct < 0).length,
+    flat: rows.filter(r => r.pct === 0).length,
+    rows: rows.slice().sort((a, b) => (b.pct ?? -999) - (a.pct ?? -999)),
+  };
+}
+
 function paint(){
   if(!latest) return;
+  const strip = document.getElementById('sectorStrip');
+  const back = document.getElementById('indexViewBar');
+
+  if(INDEX_VIEW){
+    const b = indexBlock(INDEX_VIEW);
+    strip.innerHTML = '';
+    back.hidden = false;
+    back.innerHTML = `<button type="button" id="backToSectors">&lsaquo; All sectors</button>`
+      + `<span class="ivb-what"><strong>${b.sector}</strong> · ${b.count} members, equal-weighted `
+      + `<span class="${sectorBucket(b.avgPct)}">${fmtPct(b.avgPct)}</span>`
+      + (b.missing ? ` · ${b.missing} not priced on this board` : '') + `</span>`;
+    document.getElementById('sectorBlocks').innerHTML = blockHtml(b);
+    renderExNote([]);
+    renderCaNote(b.rows);
+    return;
+  }
+
+  back.hidden = true;
+  back.innerHTML = '';
   const list = blocks();
-  document.getElementById('sectorStrip').innerHTML = stripHtml(list);
+  strip.innerHTML = stripHtml(list);
   document.getElementById('sectorBlocks').innerHTML = list.map(blockHtml).join('');
   renderExNote(list);
   renderCaNote(list.flatMap(s => s.rows || []));
 }
+
+/* Clicking an index card narrows the board to that index; the bar it puts up
+   is the way back. Delegated, because the cards are re-rendered every poll. */
+document.getElementById('indicesRow').addEventListener('click', e => {
+  const card = e.target.closest('.index-card.drillable');
+  if(!card) return;
+  INDEX_VIEW = card.getAttribute('data-index');
+  paint();
+  document.getElementById('indexViewBar').scrollIntoView({behavior: 'smooth', block: 'start'});
+});
+document.getElementById('indexViewBar').addEventListener('click', e => {
+  if(!e.target.closest('#backToSectors')) return;
+  INDEX_VIEW = null;
+  paint();
+});
 
 function render(data){
   latest = data;
   const idx = data.indices || {};
   const labels = data.indexLabels || {};
   const fut = data.futures || {}, ext = data.extended || {};
-  document.getElementById('indicesRow').innerHTML =
-    Object.keys(labels).map(k => indexCardHtml(labels[k], idx[k], fut[k], ext[k])).join('');
+  const order = data.indexOrder || Object.keys(labels);
+  const sizes = data.indexSize || {};
+  const exact = data.indexSizeExact || [];
+  document.getElementById('indicesRow').innerHTML = order
+    .filter(k => labels[k])
+    .map(k => indexCardHtml(k, labels[k], idx[k], fut[k], ext[k], sizes[k], exact.includes(k)))
+    .join('');
 
   const b = data.breadth;
   document.getElementById('breadthTag').textContent =
@@ -343,7 +424,7 @@ wire('data-sort', v => { sortMode = v; });
 wire('data-avg',  v => { avgMode  = v; });
 wire('data-show', v => { showMode = v; });
 
-loadCaps().then(() => startPolling('board_data.json', render));
+Promise.all([loadCaps(), loadMembers()]).then(() => startPolling('board_data.json', render));
 </script>
 </body>
 </html>

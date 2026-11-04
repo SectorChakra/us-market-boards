@@ -12,6 +12,7 @@ job - it reads five years of history and would be pointless at this frequency.
 
 import json
 import os
+import pathlib
 import sys
 from datetime import datetime, timezone
 
@@ -84,6 +85,27 @@ def sort_by_pct(rows):
                   reverse=True)
 
 
+MEMBERS_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "index_members.json"
+
+
+def index_extras():
+    """Index members the sector universe does not already cover.
+
+    Missing or unreadable, this returns nothing and the board carries on: the
+    Nasdaq-100 view then shows the members it has, and the page says how many
+    of the hundred and one those are. A partial list that claims to be whole
+    would be the worse failure.
+    """
+    try:
+        members = json.loads(MEMBERS_FILE.read_text())["members"]
+    except Exception as exc:
+        print(f"  index_members.json unreadable ({type(exc).__name__}) — "
+              "drill-downs will show only S&P 500 names")
+        return []
+    known = set(U.SPX_ALL) | set(U.ETF_ALL)
+    return sorted({t for ts in members.values() for t in ts} - known)
+
+
 def main():
     force = "--force" in sys.argv
     if not force and U.market_phase() == "stop":
@@ -91,7 +113,13 @@ def main():
         print(f"outside the refresh window ({now:%a %H:%M %Z}) — skipping")
         return
 
-    universe = list(U.SPX_ALL) + list(U.ETF_ALL)
+    # A handful of Nasdaq-100 members are not S&P 500 names (ASML, ARM, PDD,
+    # MELI and the rest), so without this the Nasdaq-100 drill-down would be
+    # missing fifteen of its hundred and one and would not say so. Read from
+    # the members file rather than hard-coded, so an index reconstitution
+    # changes the fetch list on its own.
+    extras = index_extras()
+    universe = list(U.SPX_ALL) + list(U.ETF_ALL) + extras
     stocks, indices = fetch_all(universe, dict(B.INDICES), max_workers=25)
     generated_at = datetime.now(timezone.utc).isoformat()
 
@@ -122,6 +150,7 @@ def main():
     flagged = B.flag_corporate_moves(stocks)
 
     stock_rows = sort_by_pct(B.build_rows(U.SPX_ALL, stocks, flagged))
+    extra_rows = B.build_rows(extras, stocks, flagged)
     etf_rows = sort_by_pct(B.build_rows(U.ETF_ALL, stocks, flagged))
 
     # Movers are drawn from the STOCKS only. Mixing a leveraged or single-sector
@@ -160,6 +189,11 @@ def main():
         "market": "US",
         "indices": indices,
         "indexLabels": B.INDEX_LABELS,
+        # Narrowest index first. Sent with the data rather than hard-coded in
+        # the page so the order, the labels and the levels cannot drift apart.
+        "indexOrder": B.INDEX_ORDER,
+        "indexSize": B.INDEX_SIZE,
+        "indexSizeExact": sorted(B.INDEX_SIZE_EXACT),
         "futures": futures,
         "extended": extended,
         "sectors": [market] + sectors,
@@ -168,8 +202,13 @@ def main():
         "losers": losers,
         "breadth": {"advancers": advancers, "decliners": decliners,
                     "total": len([r for r in stock_rows if r["pct"] is not None])},
+        # Index members that live outside the S&P 500 and so appear in no
+        # sector block. Carried separately rather than folded into `sectors`,
+        # which would quietly inflate the sector averages with names the
+        # sector does not contain.
+        "indexExtras": extra_rows,
         "universe": {"stocks": len(U.SPX_ALL), "etfs": len(U.ETF_ALL),
-                     "loaded": loaded},
+                     "extras": len(extras), "loaded": loaded},
     }
     with open(OUT, "w") as f:
         json.dump(payload, f, separators=(",", ":"))
