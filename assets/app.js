@@ -249,20 +249,30 @@ function indexCardHtml(key, displayName, idx, fut, ext, size, exact){
       </div>`;
   }
 
-  const sub = (label, tag, price, pct, title) => {
+  /* `ref` is the price this row's % is measured against - the future's own
+     previous settle, or the proxy ETF's regular close. The points are derived
+     from that same reference, so the % and the points on a row can never
+     disagree about either the size or the direction of the move. Without a
+     reference there is nothing honest to subtract, so the slot is omitted. */
+  const sub = (label, tag, price, pct, title, ref) => {
     const u = pct >= 0;
+    const ptsCell = (ref == null) ? '<span class="s-pts"></span>'
+      : `<span class="s-pts ${u?'up':'down'}">`
+        + `${u?'+':'\u2212'}${num(Math.abs(price - ref))}</span>`;
     return `<div class="idx-sub" title="${title}">
       <span class="s-lbl">${label}</span>
       <span class="s-tag">${tag}</span>
       <span class="s-px">${num(price)}</span>
       <span class="s-pc ${u?'up':'down'}">${u?'+':''}${pct.toFixed(2)}%</span>
+      ${ptsCell}
     </div>`;
   };
 
   let extras = '';
   if(fut && fut.price != null){
     extras += sub('FUT', fut.ticker, fut.price, fut.pct,
-      `${fut.name} — against its own previous settle ${num(fut.prevClose)}`);
+      `${fut.name} — against its own previous settle ${num(fut.prevClose)}`,
+      fut.prevClose);
   }
   if(ext && ext.price != null){
     const when = ext.asOf ? new Date(ext.asOf).toLocaleTimeString('en-US',
@@ -270,7 +280,7 @@ function indexCardHtml(key, displayName, idx, fut, ext, size, exact){
     extras += sub(ext.phase === 'pre' ? 'PRE' : 'POST', ext.proxy, ext.price, ext.pct,
       `${ext.proxy} extended-hours print at ${when} ET, against its regular close `
       + `${num(ext.refClose)}. The index itself does not trade outside the session; `
-      + `this is the ETF that tracks it.`);
+      + `this is the ETF that tracks it.`, ext.refClose);
   }
   if(extras) extras = `<div class="idx-subs">${extras}</div>`;
 

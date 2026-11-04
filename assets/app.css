@@ -785,7 +785,7 @@ button.sector-row{
     display:grid; gap:3px;
   }
   .idx-sub{
-    display:grid; grid-template-columns:30px 1fr auto auto;
+    display:grid; grid-template-columns:30px 1fr auto auto auto;
     align-items:baseline; gap:6px;
     font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
     font-size:10.5px; cursor:help;
@@ -799,3 +799,9 @@ button.sector-row{
   .idx-sub .s-pc{ font-weight:700; }
   .idx-sub .s-pc.up{ color:var(--up, #4caf7d); }
   .idx-sub .s-pc.down{ color:var(--down, #e0575b); }
+  /* Points sit at the far right of the row, after the %: price, then how big
+     the move is, then how far it travelled. Reserved as a grid column so rows
+     with and without a reference still line their numbers up. */
+  .idx-sub .s-pts{ font-weight:600; white-space:nowrap; text-align:right; }
+  .idx-sub .s-pts.up{ color:var(--up, #4caf7d); }
+  .idx-sub .s-pts.down{ color:var(--down, #e0575b); }
