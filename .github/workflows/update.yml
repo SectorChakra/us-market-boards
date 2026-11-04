@@ -119,8 +119,45 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Commit if anything changed
+      # ── publish at most every MIN_PUBLISH_GAP seconds ──
+      #
+      # The chain FETCHES every ~45s and that stays: it costs nothing and means
+      # whatever we do publish is fresh to within one cycle. What is throttled
+      # is the COMMIT, because a GitHub Pages build takes longer than 45s, so
+      # each one was being cancelled by the next commit before it finished.
+      #
+      # Measured on 2026-11-04: live board_data.json lagged repo HEAD by
+      # 3m47s, and across one ~50-minute stretch the tally was 38 cancelled,
+      # 4 successful and 18 stuck queued, with nothing published at all - an
+      # asset change pushed at 15:47 ET was still not live at 16:39. So the
+      # 45s cadence was buying no freshness whatsoever; it was only starving
+      # the builds that publish it.
+      #
+      # The gap is measured against origin/main, the branch Pages actually
+      # serves, not the local checkout - and against ANY commit on it, so a
+      # daily rebuild or a code push also gives the build room to land.
+      #
+      # Throttled only while the cash session is live. Outside it the gate is
+      # bypassed, because the settled closing print arrives in the 16:00-16:05
+      # tail and must never be the snapshot that gets held back.
+      - name: Hold back if the last publish was too recent
+        id: gate
         if: steps.phase.outputs.phase != 'stop'
+        run: |
+          MIN_PUBLISH_GAP=180
+          git fetch -q origin main || true
+          last=$(git log -1 --format=%ct origin/main 2>/dev/null || echo 0)
+          age=$(( $(date -u +%s) - last ))
+          if [ "${{ steps.phase.outputs.phase }}" = "live" ] && [ "$last" -gt 0 ] && [ "$age" -lt "$MIN_PUBLISH_GAP" ]; then
+            echo "last publish ${age}s ago (< ${MIN_PUBLISH_GAP}s) - holding this snapshot so the Pages build can finish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "last publish ${age}s ago - publishing"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit if anything changed
+        if: steps.phase.outputs.phase != 'stop' && steps.gate.outputs.publish == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
