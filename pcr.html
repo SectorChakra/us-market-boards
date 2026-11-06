@@ -45,12 +45,9 @@
   <div class="term-wrap" id="term"></div>
 
   <div class="footnote">
-    <strong>The whole chain, not a window — and that is the difference from the India board.</strong>
-    That one scrapes Sensibull because NSE's own site is blocked, and a scrape returns only what the
-    page renders: roughly &plusmn;6.7% around ATM for NIFTY. Its band reading is a limitation dressed
-    as a choice. CBOE publishes every contract as plain JSON on a public CDN — 29,282 SPX contracts
-    in one request, open interest and volume on each — so here the <strong>whole-chain</strong> ratio
-    is the headline and the band is secondary, which is the right way round.
+    <strong>The whole chain, not a window.</strong> Cboe publishes every listed contract with its
+    open interest and volume, so here the <strong>whole-chain</strong> ratio is the headline and the
+    near-the-money band is the secondary view.
     <br><br>
     <strong>The two scopes usually disagree, and the gap is the point.</strong> The whole chain
     includes far out-of-the-money puts bought as crash insurance, which inflate it; the ATM band is
@@ -64,9 +61,8 @@
     <br><br>
     <strong>What this is not.</strong> A put-call ratio is a positioning statistic, not a signal, and
     index puts in particular are bought as hedges against portfolios the ratio cannot see — so a high
-    reading is at least as likely to mean &ldquo;hedged&rdquo; as &ldquo;bearish&rdquo;. Nothing here
-    is backtested, and the strategy work in this stack has repeatedly found that readings like this
-    one do not survive as entry filters.
+    reading is at least as likely to mean &ldquo;hedged&rdquo; as &ldquo;bearish&rdquo;. It is context for reading the market,
+    not an entry rule.
     <br><br>
     SPX, NDX and RUT now list <em>daily</em> expiries, so the nearest expiry is often zero days out.
     A 0DTE row carries open interest that largely settled at yesterday's close while its volume is

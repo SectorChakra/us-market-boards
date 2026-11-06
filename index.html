@@ -68,9 +68,8 @@
   <div class="footnote ca-note" id="caNote" hidden></div>
   <div class="footnote ca-note" id="exNote" hidden></div>
   <div class="footnote">
-    Prices and % change from Yahoo Finance, refreshed about once a minute during US market hours by
-    a GitHub Actions workflow; this page re-reads <code>board_data.json</code> every 30 seconds while
-    open.
+    Prices and % change from Yahoo Finance, refreshed about once a minute during US market hours;
+    the page updates itself every 30 seconds while open.
     <br><br>
     <strong>Each sector row shows two different things, and they are meant to disagree.</strong>
     The coloured figure is an <strong>equal-weighted average</strong> of that sector&rsquo;s S&amp;P 500
@@ -83,7 +82,7 @@
     All eleven GICS sectors have an exact, liquid fund, so a missing bar there means a
     <em>fetch</em> failed rather than that no index matches — and it says so. <strong>ETF groups
     have no fund of their own</strong>, so they fall back to the same constituent-derived envelope
-    the Indian board uses for its eleven sectors with no matching NSE index: each member&rsquo;s own
+    the India sector board uses where no matching index exists: each member&rsquo;s own
     day low and high as a % move from its own previous close, averaged equal-weight. That bar is
     drawn <strong>muted and dashed</strong> on purpose. It is an <em>envelope</em>, not an index — it
     treats every member&rsquo;s low as simultaneous, which no real index does — so read it as

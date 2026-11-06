@@ -72,13 +72,11 @@
 
   <div class="footnote" id="spinNote" hidden></div>
   <div class="footnote">
-    <strong>Two cadences, joined in the browser.</strong> EMAs, 52-week extremes and the Point &amp;
-    Figure column are <em>daily</em> values — they can only change once, after the close — so they are
-    built once a day into <code>levels.json</code>. Only the price moves intraday, so only the price
-    is refreshed each minute into <code>spot.json</code>. Distance to the 44 EMA is computed here from
-    (live price, daily 44 EMA), which is why a minute-cadence board costs one small sweep rather than
-    614 full histories. A symbol whose price fetch failed keeps its last one and is greyed — a board
-    showing a ten-minute-old price as if it were live is worse than one admitting it is behind.
+    <strong>Daily levels, live price.</strong> EMAs, 52-week extremes and the Point &amp;
+    Figure columns are <em>daily</em> values — they change once, after the close. Only the price
+    moves intraday, refreshed about once a minute, and the distance to the 44 EMA is recomputed from
+    it. A symbol whose latest price could not be fetched keeps its last one and is greyed out, so a
+    stale price is never shown as live.
     <br><br>
     <strong>The EMA ladder reads left to right, fast to slow.</strong> A filled block means price is
     above that EMA. All seven filled is an unambiguous uptrend across every horizon; the interesting
@@ -88,15 +86,12 @@
     unreliable is worse than one that is absent.
     <br><br>
     <strong>Point &amp; Figure, at two speeds.</strong> X is demand, O is supply. The fast column is
-    0.25% boxes reversing on 3 (0.75%), which is well inside a normal daily range — measured across
-    53,545 columns on the Indian board, the median column lives <em>two bars</em> and 48% last a
-    single one, so read it as a one-to-two-day flag, not a trend. The slow column is 1% × 3. Click
-    either to open the actual grid. The published data carries box <em>indices</em>, never prices,
-    and the page rebuilds the axis from (base, box&nbsp;%) with the same geometric formula — so the
-    two sides cannot round differently.
+    0.25% boxes reversing on 3 (0.75%), which is well inside a normal daily range — most columns last only one or two bars, so read it
+    as a one-to-two-day flag, not a trend. The slow column is 1% × 3. Click
+    either to open the actual grid.
     <br><br>
-    <strong>History starts at a large spin-off.</strong> Yahoo back-adjusts a spin-off, so the series
-    looks continuous and nothing flags it — which is exactly the trap: a 44 EMA would otherwise be
+    <strong>History starts at a large spin-off.</strong> A back-adjusted spin-off looks continuous,
+    but a 44 EMA would then be
     averaging the price of a company that no longer exists. Where more than 20% of the parent was
     separated, history here begins at the event. US splits need no such treatment; those are already
     adjusted and correctly dated.

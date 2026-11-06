@@ -95,8 +95,7 @@
     <br><br>
     <strong>Sector points are the eleven Select Sector SPDRs — real funds, not baskets.</strong>
     The SPDRs are exactly the eleven GICS sectors, liquid, properly index-weighted and tradeable,
-    so the sector view plots the funds themselves rather than an average of our own making. The
-    Indian board has to build equal-weighted baskets only because no such fund exists there.
+    so the sector view plots the funds themselves rather than an average of our own making.
     <strong>ETF groups</strong> are the one place a basket is still needed: no single fund covers
     &ldquo;fixed income&rdquo; or &ldquo;country &amp; region&rdquo;, so those points are
     equal-weighted aggregates of their members. <span id="basisNote"></span>
@@ -108,33 +107,15 @@
     and because a group is the unit you actually think in: bonds against equities, defensives
     against cyclicals.
     <br><br>
-    <strong>US splits need no repair; spin-offs need a judgement.</strong> Measured across eight
-    known splits — NVDA 10:1, AAPL 4:1, AMZN 20:1, GOOGL 20:1, TSLA 3:1, CMG 50:1, WMT 3:1,
-    MSTR 10:1 — the close-to-close move across every ex-date is an ordinary day, so Yahoo&rsquo;s
-    US series is <em>already</em> adjusted and correctly dated. (Its Indian series is neither,
-    which is why that board carries a whole repair layer this one does without.) A spin-off is
-    the real question, and it is one of degree: Yahoo prices it in as a fractional adjustment
-    whose ratio <em>is</em> the size of the separation. Above <strong>20%</strong> of the parent
-    removed, the earlier bars belong to a materially larger company, so usable history starts at
+    <strong>Splits need no repair; large spin-offs reset history.</strong> US prices are
+    already adjusted for splits. Where a spin-off removed more than <strong>20%</strong> of the
+    parent, the earlier bars belong to a materially larger company, so usable history starts at
     the event and the name reads <strong>NA</strong> until it has enough of its own — clearing
-    itself as the window rolls. Below it, the surviving business still dominates its own path and
-    the back-adjusted series is kept. DuPont (58% to Qnity), Dell (49% to VMware), Exelon,
-    AT&amp;T, Western Digital, Fortive, Flex, GE and BDX fall above the line; 3M, Jacobs, Danaher,
-    Honeywell, Comcast and IBM fall below it.
+    itself as the window rolls. Smaller spin-offs keep the adjusted series.
     <br><br>
-    <strong>A large move is not evidence of a corporate action, so none is ever inferred from
-    price.</strong> Moderna rose <strong>177% in one session</strong> on 19 August 2026 — by size
-    indistinguishable from a reverse split, and entirely real: the first positive Phase 3 for a
-    personalised mRNA cancer vaccine. Smoothing it would have deleted the largest true signal on
-    the board. Unexplained gaps are reported in the build log and left untouched. The one
-    exception is a separation that has happened but which Yahoo has not yet published — Corteva&rsquo;s
-    seed spin-off as Vylor on 1 October 2026 — and that is entered by hand only against the
-    company&rsquo;s own filing, never against a number.
-    <br><br>
-    Large moves that are <em>not</em> on the reviewed corporate-action list are left strictly
-    alone. F&amp;O stocks have no daily price band, so a 25–30% day is legal and often real —
-    Adani Enterprises in Feb 2023, IndusInd in Mar 2025, IEX in Jul 2025 — and smoothing
-    those away would erase exactly the risk this board exists to show.
+    <strong>A large move is never treated as a corporate action.</strong> Big one-day moves
+    with no corporate event behind them are almost always real, so they are left untouched —
+    smoothing them would erase exactly the risk this board exists to show.
     <br><br>
     Every symbol is z-scored over an <strong>identical window</strong>. That matters more than it
     sounds: the same stock on the same day lands in a different spot if normalised over a different
@@ -1097,9 +1078,8 @@ function syncChrome(){
     + (plain.length ? `Excluded on this timeframe: ${plain.map(e=>esc(e.name)).join(', ')}. ` : '')
     + (u ? `<br><strong>${u.stocksPlotted}</strong> of ${u.stocksTotal} S&amp;P 500 stocks and `
          + `<strong>${u.etfsPlotted}</strong> of ${u.etfsTotal} ETFs are plotted on this `
-         + `timeframe; ${u.excluded} excluded above. The constituent list is agreed by two `
-         + `independent sources before it is used, and the build fails if any name is neither `
-         + `plotted nor explained — nothing goes missing quietly.` : '');
+         + `timeframe; ${u.excluded} excluded above. `
+         : '');
   /* Only the ETF-group baskets can be partial; sectors are funds. */
   const grp=(DATA&&DATA.etfGroups&&DATA.etfGroups[period])||[];
   const part=grp.filter(s=>s.basis<s.count);
