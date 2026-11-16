@@ -1206,6 +1206,36 @@ function rebuildOverdue(gen, now){
 }
 window.rebuildOverdue = rebuildOverdue;
 
+/* What the date on screen MEANS, which a bare date does not say: "bars through
+   13 Nov" looks identical whether that is the most recent close or three days
+   late, so the reader has to know the calendar to judge it.
+
+   The verdict is derived from the build, never from a session calendar this
+   page does not have. The rebuild re-checks staleness against the last close
+   itself, so as long as it is not overdue, the bars on screen are whatever the
+   newest build found - which is the latest close, holidays included, without
+   this page needing to know which days the exchange sat out.
+
+   So there are only three states worth saying, and `overdue` already decides
+   between them:
+     overdue  - a close has passed with no rebuild behind it (amber)
+     current, with the next rebuild still ahead  - say when it lands
+     current, built after today's close          - nothing left to wait for */
+function freshnessNote(gen, now){
+  if(rebuildOverdue(gen, now)) return 'rebuild overdue';
+  const p = etParts(now);
+  if(['Sat','Sun'].includes(p.weekday))
+    return 'latest close \u00b7 next rebuild Monday after the close';
+  // Has a build already landed since today's 16:00 ET close? Stepping back from
+  // now in exchange minutes keeps this on the real ET offset through both DST
+  // changes, the same way rebuildOverdue does.
+  const mins = +p.hour*60 + +p.minute;
+  const close = new Date(now.getTime() - (mins - 16*60)*60000);
+  if(mins >= 16*60 && gen >= close) return 'latest close';
+  return "latest close \u00b7 next rebuild after today's 4 PM ET close";
+}
+window.freshnessNote = freshnessNote;
+
 function stamp(){
   const g=new Date(DATA.generatedAt);
   const fmt=(d,o)=>d.toLocaleString('en-US',Object.assign({timeZone:'America/New_York'},o));
@@ -1213,12 +1243,15 @@ function stamp(){
   if(DATA.lastBar){
     // midday UTC, so the session date cannot slip either way when formatted
     const b=new Date(DATA.lastBar+'T12:00:00Z');
-    txt+=' · bars through '+fmt(b,{day:'2-digit',month:'short',timeZone:'UTC'});
+    // The weekday is the cheap half of the answer: "Fri 13 Nov" on a Monday
+    // reads as the last close at a glance, where "13 Nov" alone does not.
+    txt+=' · bars through '+fmt(b,{weekday:'short',day:'2-digit',month:'short',timeZone:'UTC'});
   }
-  const overdue = rebuildOverdue(g, new Date());
+  const now = new Date();
+  const overdue = rebuildOverdue(g, now);
   const tag=document.getElementById('statusTag');
   tag.classList.toggle('overdue', overdue);
-  setStatus(txt+(overdue ? ' · rebuild overdue' : ' · daily rebuild'), false);
+  setStatus(txt+' · '+freshnessNote(g, now), false);
 }
 
 /* Width changes (rotating a phone, resizing a window) re-lay the chart out;
